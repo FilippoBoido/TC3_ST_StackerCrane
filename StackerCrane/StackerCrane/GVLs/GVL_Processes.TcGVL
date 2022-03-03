@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <GVL Name="GVL_Processes" Id="{14ac167a-9928-460c-a0e3-530eb8b69a9b}">
+    <Declaration><![CDATA[VAR_GLOBAL
+	stackerCraneProcess : StackerCraneProcess;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

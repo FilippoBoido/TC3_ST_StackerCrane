@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <POU Name="Fill" Id="{c7714b5e-7241-47ca-81a1-906be987ba4f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Fill EXTENDS CraneMovement
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[SUPER^(
+	iPalletsInRack:=iPalletsInRack,
+	aSlots:=aSlots,
+	fioOutputs:=fioOutputs,
+	sCurrentOperation:=sCurrentOperation);
+	
+IF bStart 
+	AND iStep = 0
+	AND iPalletsInRack < 54
+	THEN
+	iStep := 10;
+	bBusy := TRUE;
+ELSIF NOT bStart
+	THEN
+	bDone := FALSE;
+	bBusy := FALSE;
+	iStep := 0;
+END_IF
+
+
+CASE iStep OF
+	
+	10: // Start loading pallet on the stacker crane 
+	(* 
+		Entering critical process section:
+		If the process is stopped here, particular care is needed to recover
+		and make sure that the pallet is either stored in the chosen slot or 
+		removed from the line
+	*)
+		fioOutputs.bSCRight := TRUE;
+		IF fioInputs.bSCRightLimit 
+			THEN
+			iStep := 20;
+		END_IF
+		
+	20: // Lift the stacker crane
+	
+		fioOutputs.bSCLift := TRUE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 30;
+		END_IF
+		
+	30: // Stacker crane in middle position
+	
+		fioOutputs.bSCRight := FALSE;
+		IF fioInputs.bSCMiddlLimit
+			THEN
+			istep := 40;
+		END_IF
+		
+	40: // Lower stacker crane
+		
+		fioOutputs.bSCLift := FALSE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 50;
+		END_IF
+	
+	50: // Go to required position
+	
+		sCurrentOperation := Concat('Going to slot position ', INT_TO_STRING(iSlotPosition));
+		fioOutputs.iSCPosition := iSlotPosition;
+		motionTimer.IN := TRUE;
+		
+		IF NOT fioInputs.bSCMovingX
+			 AND NOT fioInputs.bSCMovingZ
+			 AND motionTimer.Q
+			 THEN
+			 
+			 motionTimer.IN := FALSE;
+			 iStep := 60; 
+		END_IF
+		
+	60: // Lift 
+	
+		fioOutputs.bSCLift := TRUE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 70;
+		END_IF
+	
+	70: // Unload into the rack
+		sCurrentOperation := 'Unloading';
+		fioOutputs.bSCLeft := TRUE;
+		IF fioInputs.bSCLeftLimit
+			THEN
+			istep := 80;
+		END_IF
+	
+	80: // Lower the crane
+	
+		fioOutputs.bSCLift := FALSE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			aSlots[iSlotPosition] := TRUE;
+			iPalletsInRack:=iPalletsInRack+1;
+			liftTimer.IN := FALSE;
+			iStep := 90;
+		END_IF
+	
+	90: // Return to the middle position
+		sCurrentOperation := 'Return to initial position';
+		fioOutputs.bSCLeft := FALSE;
+		IF fioInputs.bSCMiddlLimit
+			THEN
+			istep := 100;
+		END_IF	
+		
+	100: // Return to the load position
+	
+		fioOutputs.iSCPosition := 55;
+		motionTimer.IN := TRUE;
+		
+		IF NOT fioInputs.bSCMovingX
+			 AND NOT fioInputs.bSCMovingZ
+			 AND motionTimer.Q
+			 THEN
+			 motionTimer.IN := FALSE;
+			 bDone := TRUE;
+			 bBusy := FALSE;
+			 iStep := 110; 
+		END_IF
+	
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="Fill">
+      <LineId Id="146" Count="5" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="154" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="14" Count="1" />
+      <LineId Id="140" Count="1" />
+      <LineId Id="16" Count="4" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="24" Count="81" />
+      <LineId Id="113" Count="1" />
+      <LineId Id="152" Count="1" />
+      <LineId Id="115" Count="21" />
+      <LineId Id="144" Count="1" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="21" Count="2" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <DUT Name="AdsCom" Id="{5decc274-ee3d-486f-ac23-2a35ee03791c}">
+    <Declaration><![CDATA[TYPE AdsCom :
+STRUCT
+	iMode : INT := 1;
+	iAlgo : INT := 1;
+	iRackSlot : INT:=0;
+	iTotalPalletsProcessed : INT;
+	iPalletsInRack : INT;
+	sCurrentOperation : STRING;
+	bStart : BOOL;
+	bStop : BOOL;
+	bHalt : BOOL;
+	bResume : BOOL;
+	aSlots : ARRAY[1..54] OF BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

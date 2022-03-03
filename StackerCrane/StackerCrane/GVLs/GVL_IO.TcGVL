@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <GVL Name="GVL_IO" Id="{72778364-2e3d-4c45-96e3-8cf3abd0de89}">
+    <Declaration><![CDATA[VAR_GLOBAL
+	{attribute 'OPC.UA.DA' := '1'}
+	fioInputs : Inputs;
+	
+	{attribute 'OPC.UA.DA' := '1'}
+	fioOutputs : Outputs;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

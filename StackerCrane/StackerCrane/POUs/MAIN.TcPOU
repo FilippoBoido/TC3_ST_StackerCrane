@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <POU Name="MAIN" Id="{11a06c43-e2f5-42ce-bb32-02d9d73a9c88}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[stackerCraneProcess(
+	bHalt:=GVL_ADS.stAdsCom.bHalt,
+	bResume:=GVL_ADS.stAdsCom.bResume,
+	bStart:=GVL_ADS.stAdsCom.bStart,
+	bStop:=GVL_ADS.stAdsCom.bStop,
+	fioOutputs:=GVL_IO.fioOutputs,
+	fioInputs:=GVL_IO.fioInputs,
+	iAlgo:=GVL_ADS.stAdsCom.iAlgo,
+	iMode:=GVL_ADS.stAdsCom.iMode,
+	sCurrentOperation=>GVL_ADS.stAdsCom.sCurrentOperation,
+	iPalletsInRack=>GVL_ADS.stAdsCom.iPalletsInRack,
+	iTotalPalletsProcessed=>GVL_ADS.stAdsCom.iTotalPalletsProcessed,
+	aSlots=>GVL_ADS.stAdsCom.aSlots);
+]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="2" Count="0" />
+      <LineId Id="8" Count="3" />
+      <LineId Id="27" Count="1" />
+      <LineId Id="18" Count="1" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="13" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

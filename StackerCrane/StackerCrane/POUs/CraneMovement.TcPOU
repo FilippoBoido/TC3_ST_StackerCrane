@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <POU Name="CraneMovement" Id="{f34fd740-79a5-4346-a0ba-5453a533aaa0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK CraneMovement
+VAR_IN_OUT
+	fioOutputs : OUTPUTS;
+	iPalletsInRack : INT;
+	aSlots : ARRAY[1..54] OF BOOL;
+	sCurrentOperation : STRING;
+END_VAR
+
+VAR_INPUT
+	bStart : BOOL;
+	fioInputs : INPUTS;
+	iSlotPosition : INT;
+END_VAR
+
+VAR_OUTPUT
+	bBusy : BOOL;
+	bDone : BOOL;
+END_VAR
+
+VAR
+	iStep : INT;
+	startTrig : R_TRIG;
+	stopTrig : R_TRIG;
+	resumeTrig : R_TRIG;
+	haltTrig : R_TRIG;
+	iHaltStep : INT;
+	mAlgo : INT;
+	mMode : INT;
+	i : INT;
+	iChosenSlot : INT;
+	liftTimer : TON;
+	motionTimer : TON;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[liftTimer(PT:=T#2S); 
+motionTimer(PT:=T#1S);]]></ST>
+    </Implementation>
+    <LineIds Name="CraneMovement">
+      <LineId Id="59" Count="0" />
+      <LineId Id="31" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

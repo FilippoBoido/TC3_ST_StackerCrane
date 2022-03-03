@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <DUT Name="Outputs" Id="{c298465a-de36-418a-814d-976193cd98a2}">
+    <Declaration><![CDATA[TYPE Outputs :
+STRUCT
+	bEntryRollerConveyor: BOOL;
+	bExitRollerConveyor: BOOL;
+	bEntryLoadingConveyor : BOOL;
+	bExitLoadingConveyor : BOOL;
+	bEmitPallet : BOOL;
+	bSCLift : BOOL;
+	bSCLeft : BOOL;
+	bSCRight : BOOL;
+	iSCPosition : INT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

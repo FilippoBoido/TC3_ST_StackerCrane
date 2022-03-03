@@ -1,0 +1,194 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.10">
+  <POU Name="Empty" Id="{24fefab1-b201-4437-8aaf-9aa4a1c43b4a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Empty EXTENDS CraneMovement
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[SUPER^(
+	iPalletsInRack:=iPalletsInRack,
+	aSlots:=aSlots,
+	fioOutputs:=fioOutputs,
+	sCurrentOperation:=sCurrentOperation);
+	
+IF bStart 
+	AND iStep = 0
+	and iPalletsInRack > 0
+	THEN
+	iStep := 10;
+	bBusy := TRUE;
+ELSIF NOT bStart
+	THEN
+	bDone := FALSE;
+	bBusy := FALSE;
+	iStep := 0;
+END_IF
+
+
+CASE iStep OF
+	
+
+	10: // Go to required position
+	
+		sCurrentOperation := Concat('Going to slot position ', INT_TO_STRING(iSlotPosition));
+		fioOutputs.iSCPosition := iSlotPosition;
+		motionTimer.IN := TRUE;
+		
+		IF NOT fioInputs.bSCMovingX
+			 AND NOT fioInputs.bSCMovingZ
+			 AND motionTimer.Q
+			 THEN
+			 
+			 motionTimer.IN := FALSE;
+			 iStep := 20; 
+		END_IF
+		
+	20: // load the pallet on the stacker crane
+		sCurrentOperation := 'Loading';
+		fioOutputs.bSCLeft := TRUE;
+		IF fioInputs.bSCLeftLimit
+			THEN
+			istep := 30;
+		END_IF
+		
+	30: // Lift 
+	
+		fioOutputs.bSCLift := TRUE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 40;
+		END_IF
+		
+	40: // Stacker crane in middle position
+	
+		fioOutputs.bSCLeft := FALSE;
+		IF fioInputs.bSCMiddlLimit
+			THEN
+			istep := 50;
+		END_IF	
+		
+	50: // Lower the crane
+	
+		fioOutputs.bSCLift := FALSE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			aSlots[iSlotPosition] := FALSE;
+			iPalletsInRack:=iPalletsInRack-1;
+			liftTimer.IN := FALSE;
+			iStep := 60;
+		END_IF
+	
+		
+	60: // Return to the load position
+		sCurrentOperation := 'Return to initial position';
+
+		fioOutputs.iSCPosition := 55;
+		motionTimer.IN := TRUE;
+		
+		IF NOT fioInputs.bSCMovingX
+			 AND NOT fioInputs.bSCMovingZ
+			 AND motionTimer.Q
+			 THEN
+			 motionTimer.IN := FALSE;
+			
+			 iStep := 70; 
+		END_IF
+		
+	70: // Lift the stacker crane
+	
+		fioOutputs.bSCLift := TRUE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 80;
+		END_IF
+		
+	80: // Start loading pallet on the stacker crane 
+	
+		fioOutputs.bSCLeft := TRUE;
+		IF fioInputs.bSCLeftLimit 
+			THEN
+			iStep := 90;
+		END_IF	
+		
+	90: // Lower stacker crane
+		
+		fioOutputs.bSCLift := FALSE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 100;
+		END_IF	
+		
+	100: // Return to the middle position
+		fioOutputs.bSCLeft := FALSE;
+		IF fioInputs.bSCMiddlLimit
+			THEN
+			bDone := TRUE;
+			bBusy := FALSE;
+			istep := 110;
+		END_IF		
+
+	
+	
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="Empty">
+      <LineId Id="32" Count="7" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="40" Count="12" />
+      <LineId Id="167" Count="13" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="182" Count="0" />
+      <LineId Id="184" Count="5" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="190" Count="9" />
+      <LineId Id="207" Count="0" />
+      <LineId Id="201" Count="5" />
+      <LineId Id="181" Count="0" />
+      <LineId Id="239" Count="0" />
+      <LineId Id="220" Count="12" />
+      <LineId Id="254" Count="0" />
+      <LineId Id="241" Count="1" />
+      <LineId Id="255" Count="0" />
+      <LineId Id="243" Count="8" />
+      <LineId Id="253" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="266" Count="0" />
+      <LineId Id="257" Count="8" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="274" Count="0" />
+      <LineId Id="280" Count="4" />
+      <LineId Id="273" Count="0" />
+      <LineId Id="296" Count="0" />
+      <LineId Id="287" Count="8" />
+      <LineId Id="286" Count="0" />
+      <LineId Id="297" Count="0" />
+      <LineId Id="268" Count="3" />
+      <LineId Id="298" Count="1" />
+      <LineId Id="272" Count="0" />
+      <LineId Id="267" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="164" Count="1" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
