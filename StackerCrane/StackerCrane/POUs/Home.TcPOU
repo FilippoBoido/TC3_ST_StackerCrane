@@ -10,9 +10,145 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[]]></ST>
+      <ST><![CDATA[SUPER^(
+	iPalletsInRack:=iPalletsInRack,
+	aSlots:=aSlots,
+	fioOutputs:=fioOutputs,
+	sCurrentOperation:=sCurrentOperation);
+	
+IF bStart 
+	AND iStep = 0
+	AND iPalletsInRack > 0
+	THEN
+	iStep := 10;
+	bBusy := TRUE;
+ELSIF NOT bStart
+	THEN
+	bDone := FALSE;
+	bBusy := FALSE;
+	iStep := 0;
+END_IF
+
+
+CASE iStep OF
+	
+
+	10: // Go to required position
+	
+		sCurrentOperation := Concat('Going to slot position ', INT_TO_STRING(iSlotPosition));
+		fioOutputs.iSCPosition := iSlotPosition;
+		motionTimer.IN := TRUE;
+		
+		IF NOT fioInputs.bSCMovingX
+			 AND NOT fioInputs.bSCMovingZ
+			 AND motionTimer.Q
+			 THEN
+			 
+			 motionTimer.IN := FALSE;
+			 iStep := 20; 
+		END_IF
+		
+	20: // load the pallet on the stacker crane
+		sCurrentOperation := 'Loading';
+		fioOutputs.bSCLeft := TRUE;
+		IF fioInputs.bSCLeftLimit
+			THEN
+			istep := 30;
+		END_IF
+		
+	30: // Lift 
+	
+		fioOutputs.bSCLift := TRUE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 40;
+		END_IF
+		
+	40: // Stacker crane in middle position
+	
+		fioOutputs.bSCLeft := FALSE;
+		IF fioInputs.bSCMiddlLimit
+			THEN
+			istep := 50;
+		END_IF	
+		
+	50: // Lower the crane
+	
+		fioOutputs.bSCLift := FALSE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			aSlots[iSlotPosition] := FALSE;
+			iPalletsInRack:=iPalletsInRack-1;
+			liftTimer.IN := FALSE;
+			iStep := 60;
+		END_IF
+	
+		
+	60: // Return to the load position
+		sCurrentOperation := 'Return to initial position';
+
+		fioOutputs.iSCPosition := 55;
+		motionTimer.IN := TRUE;
+		
+		IF NOT fioInputs.bSCMovingX
+			 AND NOT fioInputs.bSCMovingZ
+			 AND motionTimer.Q
+			 THEN
+			 motionTimer.IN := FALSE;
+			
+			 iStep := 70; 
+		END_IF
+		
+	70: // Lift the stacker crane
+	
+		fioOutputs.bSCLift := TRUE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 80;
+		END_IF
+		
+	80: // Start loading pallet on the stacker crane 
+	
+		fioOutputs.bSCLeft := TRUE;
+		IF fioInputs.bSCLeftLimit 
+			THEN
+			iStep := 90;
+		END_IF	
+		
+	90: // Lower stacker crane
+		
+		fioOutputs.bSCLift := FALSE;
+		liftTimer.IN := TRUE;
+		
+		IF liftTimer.Q
+			THEN
+			liftTimer.IN := FALSE;
+			iStep := 100;
+		END_IF	
+		
+	100: // Return to the middle position
+		fioOutputs.bSCLeft := FALSE;
+		IF fioInputs.bSCMiddlLimit
+			THEN
+			bDone := TRUE;
+			bBusy := FALSE;
+			istep := 110;
+		END_IF		
+	
+END_CASE
+]]></ST>
     </Implementation>
     <LineIds Name="Home">
+      <LineId Id="10" Count="131" />
+      <LineId Id="144" Count="1" />
       <LineId Id="9" Count="0" />
     </LineIds>
   </POU>

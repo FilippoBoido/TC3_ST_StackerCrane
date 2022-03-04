@@ -18,7 +18,7 @@ END_VAR
 	
 IF bStart 
 	AND iStep = 0
-	and iPalletsInRack > 0
+	AND iPalletsInRack > 0
 	THEN
 	iStep := 10;
 	bBusy := TRUE;
@@ -143,8 +143,6 @@ CASE iStep OF
 			istep := 110;
 		END_IF		
 
-	
-	
 END_CASE
 ]]></ST>
     </Implementation>
@@ -185,8 +183,7 @@ END_CASE
       <LineId Id="298" Count="1" />
       <LineId Id="272" Count="0" />
       <LineId Id="267" Count="0" />
-      <LineId Id="150" Count="0" />
-      <LineId Id="164" Count="1" />
+      <LineId Id="164" Count="0" />
       <LineId Id="31" Count="0" />
       <LineId Id="9" Count="0" />
     </LineIds>

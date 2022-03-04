@@ -14,6 +14,7 @@ END_VAR
 	bStop:=GVL_ADS.stAdsCom.bStop,
 	fioOutputs:=GVL_IO.fioOutputs,
 	fioInputs:=GVL_IO.fioInputs,
+	iRackSlot:=GVL_ADS.stAdsCom.iRackSlot,
 	iAlgo:=GVL_ADS.stAdsCom.iAlgo,
 	iMode:=GVL_ADS.stAdsCom.iMode,
 	sCurrentOperation=>GVL_ADS.stAdsCom.sCurrentOperation,
@@ -25,7 +26,7 @@ END_VAR
     <LineIds Name="MAIN">
       <LineId Id="2" Count="0" />
       <LineId Id="8" Count="3" />
-      <LineId Id="27" Count="1" />
+      <LineId Id="27" Count="2" />
       <LineId Id="18" Count="1" />
       <LineId Id="15" Count="1" />
       <LineId Id="21" Count="1" />
