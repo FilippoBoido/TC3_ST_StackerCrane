@@ -11,9 +11,12 @@ END_VAR
 
 VAR_INPUT
 	bStart : BOOL;
+	bHalt : BOOL;
+	bResume : BOOL;
 	fioInputs : INPUTS;
 	iSlotPosition : INT;
 END_VAR
+
 
 VAR_OUTPUT
 	bBusy : BOOL;

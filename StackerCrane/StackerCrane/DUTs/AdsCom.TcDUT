@@ -5,7 +5,7 @@
 STRUCT
 	iMode : INT := 1;
 	iAlgo : INT := 1;
-	iRackSlot : INT:=0;
+	iRackSlot : INT:=1;
 	iTotalPalletsProcessed : INT;
 	iPalletsInRack : INT;
 	sCurrentOperation : STRING;

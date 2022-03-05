@@ -20,13 +20,35 @@ IF bStart
 	AND iStep = 0
 	AND iPalletsInRack < 54
 	THEN
+	
 	iStep := 10;
 	bBusy := TRUE;
+
+ELSIF bHalt
+	AND iStep > 0
+	AND iStep <> 1050
+	THEN
+	
+	liftTimer.IN := FALSE; 
+	motionTimer.IN := FALSE;
+	iHaltStep := iStep;
+	iStep := 1000;
+	
+ELSIF bResume
+	AND iStep = 1050
+	THEN
+	
+	iStep := 1100;
+	
 ELSIF NOT bStart
 	THEN
+	
 	bDone := FALSE;
 	bBusy := FALSE;
+	liftTimer.IN := FALSE; 
+	motionTimer.IN := FALSE;
 	iStep := 0;
+
 END_IF
 
 
@@ -145,6 +167,14 @@ CASE iStep OF
 			 iStep := 110; 
 		END_IF
 	
+	1000:
+		iStep:=1050;
+		
+	1050:;
+	
+	1100:
+		iStep := iHaltStep;	
+		
 END_CASE
 ]]></ST>
     </Implementation>
@@ -152,11 +182,32 @@ END_CASE
       <LineId Id="146" Count="5" />
       <LineId Id="10" Count="1" />
       <LineId Id="154" Count="0" />
-      <LineId Id="12" Count="1" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="13" Count="0" />
       <LineId Id="138" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="182" Count="0" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="171" Count="2" />
+      <LineId Id="181" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="176" Count="0" />
       <LineId Id="14" Count="1" />
+      <LineId Id="184" Count="0" />
       <LineId Id="140" Count="1" />
-      <LineId Id="16" Count="4" />
+      <LineId Id="162" Count="1" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="164" Count="0" />
+      <LineId Id="17" Count="3" />
       <LineId Id="142" Count="0" />
       <LineId Id="24" Count="81" />
       <LineId Id="113" Count="1" />
@@ -164,7 +215,11 @@ END_CASE
       <LineId Id="115" Count="21" />
       <LineId Id="144" Count="1" />
       <LineId Id="137" Count="0" />
-      <LineId Id="21" Count="2" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="186" Count="5" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="23" Count="0" />
       <LineId Id="9" Count="0" />
     </LineIds>
   </POU>

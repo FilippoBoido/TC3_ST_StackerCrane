@@ -22,10 +22,28 @@ IF bStart
 	THEN
 	iStep := 10;
 	bBusy := TRUE;
+ELSIF bHalt
+	AND iStep > 0
+	AND iStep <> 1050
+	THEN
+	
+	liftTimer.IN := FALSE; 
+	motionTimer.IN := FALSE;
+	iHaltStep := iStep;
+	iStep := 1000;
+	
+ELSIF bResume
+	AND iStep = 1050
+	THEN
+	
+	iStep := 1100;
+	
 ELSIF NOT bStart
 	THEN
 	bDone := FALSE;
 	bBusy := FALSE;
+	liftTimer.IN := FALSE; 
+	motionTimer.IN := FALSE;
 	iStep := 0;
 END_IF
 
@@ -141,15 +159,30 @@ CASE iStep OF
 			bDone := TRUE;
 			bBusy := FALSE;
 			istep := 110;
-		END_IF		
-
+		END_IF	
+	
+	1000:
+		iStep:=1050;
+		
+	1050:;
+	
+	1100:
+		iStep := iHaltStep;	
+		
 END_CASE
 ]]></ST>
     </Implementation>
     <LineIds Name="Empty">
       <LineId Id="32" Count="7" />
       <LineId Id="301" Count="0" />
-      <LineId Id="40" Count="12" />
+      <LineId Id="40" Count="2" />
+      <LineId Id="312" Count="3" />
+      <LineId Id="326" Count="0" />
+      <LineId Id="316" Count="9" />
+      <LineId Id="311" Count="0" />
+      <LineId Id="43" Count="3" />
+      <LineId Id="309" Count="1" />
+      <LineId Id="47" Count="5" />
       <LineId Id="167" Count="13" />
       <LineId Id="166" Count="0" />
       <LineId Id="182" Count="0" />
@@ -183,7 +216,10 @@ END_CASE
       <LineId Id="298" Count="1" />
       <LineId Id="272" Count="0" />
       <LineId Id="267" Count="0" />
+      <LineId Id="333" Count="0" />
+      <LineId Id="327" Count="5" />
       <LineId Id="164" Count="0" />
+      <LineId Id="334" Count="0" />
       <LineId Id="31" Count="0" />
       <LineId Id="9" Count="0" />
     </LineIds>

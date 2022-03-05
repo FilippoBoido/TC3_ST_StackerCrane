@@ -4,9 +4,12 @@
     <Declaration><![CDATA[FUNCTION_BLOCK Home extends CraneMovement
 VAR_INPUT
 END_VAR
-VAR_OUTPUT
+VAR_IN_OUT
+	bPalletWaiting : BOOL;
 END_VAR
 VAR
+	entryWaitTimer : TON;
+	exitTimer : TON;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -15,83 +18,72 @@ END_VAR
 	aSlots:=aSlots,
 	fioOutputs:=fioOutputs,
 	sCurrentOperation:=sCurrentOperation);
-	
+
+entryWaitTimer(PT:=T#4S);
+exitTimer(PT:=T#4S);
+
 IF bStart 
 	AND iStep = 0
-	AND iPalletsInRack > 0
 	THEN
+	
 	iStep := 10;
 	bBusy := TRUE;
+ELSIF bHalt
+	AND iStep > 0
+	AND iStep <> 1050
+	THEN
+	
+	entryWaitTimer.IN := FALSE;
+	liftTimer.IN := FALSE; 
+	motionTimer.IN := FALSE;
+	exitTimer.IN := FALSE;
+	iHaltStep := iStep;
+	iStep := 1000;
+	
+ELSIF bResume
+	AND iStep = 1050
+	THEN
+	
+	iStep := 1100;
+	
 ELSIF NOT bStart
 	THEN
 	bDone := FALSE;
 	bBusy := FALSE;
+	entryWaitTimer.IN := FALSE;
+	liftTimer.IN := FALSE; 
+	motionTimer.IN := FALSE;
+	exitTimer.IN := FALSE;
 	iStep := 0;
 END_IF
 
 
 CASE iStep OF
 	
-
-	10: // Go to required position
-	
-		sCurrentOperation := Concat('Going to slot position ', INT_TO_STRING(iSlotPosition));
-		fioOutputs.iSCPosition := iSlotPosition;
-		motionTimer.IN := TRUE;
-		
-		IF NOT fioInputs.bSCMovingX
-			 AND NOT fioInputs.bSCMovingZ
-			 AND motionTimer.Q
-			 THEN
-			 
-			 motionTimer.IN := FALSE;
-			 iStep := 20; 
-		END_IF
-		
-	20: // load the pallet on the stacker crane
-		sCurrentOperation := 'Loading';
-		fioOutputs.bSCLeft := TRUE;
-		IF fioInputs.bSCLeftLimit
-			THEN
-			istep := 30;
-		END_IF
-		
-	30: // Lift 
-	
-		fioOutputs.bSCLift := TRUE;
-		liftTimer.IN := TRUE;
-		
-		IF liftTimer.Q
-			THEN
-			liftTimer.IN := FALSE;
-			iStep := 40;
-		END_IF
-		
-	40: // Stacker crane in middle position
-	
+	10: // Start homing process
+		sCurrentOperation := 'Homing';
+		fioOutputs.bSCRight := FALSE;
 		fioOutputs.bSCLeft := FALSE;
+		fioOutputs.bExitLoadingConveyor := TRUE;
+		fioOutputs.bExitRollerConveyor := TRUE;
 		IF fioInputs.bSCMiddlLimit
 			THEN
-			istep := 50;
-		END_IF	
-		
-	50: // Lower the crane
+			istep := 20;
+		END_IF
 	
+	20:
+
 		fioOutputs.bSCLift := FALSE;
 		liftTimer.IN := TRUE;
 		
 		IF liftTimer.Q
 			THEN
-			aSlots[iSlotPosition] := FALSE;
-			iPalletsInRack:=iPalletsInRack-1;
 			liftTimer.IN := FALSE;
-			iStep := 60;
+			iStep := 30;
 		END_IF
-	
 		
-	60: // Return to the load position
-		sCurrentOperation := 'Return to initial position';
-
+	30: // Go to homing position
+	
 		fioOutputs.iSCPosition := 55;
 		motionTimer.IN := TRUE;
 		
@@ -100,11 +92,10 @@ CASE iStep OF
 			 AND motionTimer.Q
 			 THEN
 			 motionTimer.IN := FALSE;
-			
-			 iStep := 70; 
+			 iStep := 40; 
 		END_IF
 		
-	70: // Lift the stacker crane
+	40: // Lift the stacker crane
 	
 		fioOutputs.bSCLift := TRUE;
 		liftTimer.IN := TRUE;
@@ -112,43 +103,164 @@ CASE iStep OF
 		IF liftTimer.Q
 			THEN
 			liftTimer.IN := FALSE;
-			iStep := 80;
+			iStep := 50;
 		END_IF
 		
-	80: // Start loading pallet on the stacker crane 
+	50: // Start loading pallet on the stacker crane 
 	
 		fioOutputs.bSCLeft := TRUE;
 		IF fioInputs.bSCLeftLimit 
 			THEN
-			iStep := 90;
+			iStep := 60;
 		END_IF	
 		
-	90: // Lower stacker crane
+	60: // Lower stacker crane
 		
 		fioOutputs.bSCLift := FALSE;
 		liftTimer.IN := TRUE;
 		
 		IF liftTimer.Q
 			THEN
+			exitTimer.IN := TRUE;
 			liftTimer.IN := FALSE;
-			iStep := 100;
-		END_IF	
+			iStep := 65;
+		END_IF
 		
-	100: // Return to the middle position
+	65: // Return to the middle position
 		fioOutputs.bSCLeft := FALSE;
 		IF fioInputs.bSCMiddlLimit
 			THEN
-			bDone := TRUE;
-			bBusy := FALSE;
-			istep := 110;
+			istep := 70;
 		END_IF		
 	
+	70: //Check if a Pallet is waiting to be loaded
+		entryWaitTimer.IN := TRUE;
+		IF fioInputs.bEntrySensor 
+			THEN
+			entryWaitTimer.IN := FALSE;
+			//process the pallet
+			bPalletWaiting := TRUE;
+			fioOutputs.bEntryLoadingConveyor := FALSE;
+			fioOutputs.bEntryRollerConveyor := FALSE;
+
+			iStep := 80;
+			
+		ELSIF entryWaitTimer.Q
+			THEN
+			entryWaitTimer.IN := FALSE;
+			fioOutputs.bEntryLoadingConveyor := FALSE;
+			fioOutputs.bEntryRollerConveyor := FALSE;
+
+			iStep := 80;
+			
+		ELSE
+			
+			fioOutputs.bEntryLoadingConveyor := TRUE;
+			fioOutputs.bEntryRollerConveyor := TRUE;
+			
+		END_IF
+		
+	80:
+		IF exitTimer.Q
+			THEN
+			exitTimer.IN := FALSE;
+			fioOutputs.bExitLoadingConveyor := FALSE;
+			fioOutputs.bExitRollerConveyor := FALSE;
+			bDone := TRUE;
+			bBusy := FALSE;
+			iStep:=90;
+		END_IF
+
+		
+	1000:
+		iStep:=1050;
+		
+	1050:;
+	
+	1100:
+		iStep := iHaltStep;	
+		
 END_CASE
 ]]></ST>
     </Implementation>
     <LineIds Name="Home">
-      <LineId Id="10" Count="131" />
-      <LineId Id="144" Count="1" />
+      <LineId Id="10" Count="4" />
+      <LineId Id="176" Count="1" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="251" Count="0" />
+      <LineId Id="16" Count="1" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="282" Count="0" />
+      <LineId Id="20" Count="1" />
+      <LineId Id="264" Count="3" />
+      <LineId Id="281" Count="0" />
+      <LineId Id="278" Count="2" />
+      <LineId Id="269" Count="8" />
+      <LineId Id="263" Count="0" />
+      <LineId Id="22" Count="3" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="237" Count="1" />
+      <LineId Id="249" Count="0" />
+      <LineId Id="26" Count="5" />
+      <LineId Id="153" Count="0" />
+      <LineId Id="159" Count="1" />
+      <LineId Id="155" Count="0" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="156" Count="2" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="162" Count="0" />
+      <LineId Id="226" Count="0" />
+      <LineId Id="228" Count="0" />
+      <LineId Id="227" Count="0" />
+      <LineId Id="230" Count="5" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="236" Count="0" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="36" Count="6" />
+      <LineId Id="44" Count="3" />
+      <LineId Id="198" Count="25" />
+      <LineId Id="247" Count="0" />
+      <LineId Id="224" Count="1" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="254" Count="3" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="169" Count="2" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="182" Count="0" />
+      <LineId Id="194" Count="2" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="197" Count="0" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="185" Count="1" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="172" Count="0" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="173" Count="1" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="66" Count="0" />
+      <LineId Id="239" Count="0" />
+      <LineId Id="241" Count="4" />
+      <LineId Id="252" Count="1" />
+      <LineId Id="246" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="292" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="283" Count="0" />
+      <LineId Id="286" Count="4" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="293" Count="0" />
+      <LineId Id="145" Count="0" />
       <LineId Id="9" Count="0" />
     </LineIds>
   </POU>

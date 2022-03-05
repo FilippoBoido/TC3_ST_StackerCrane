@@ -23,7 +23,10 @@ VAR_OUTPUT
 
 END_VAR
 VAR
-	iStep : INT;
+	bFirstStart : BOOL := TRUE;
+	
+	iStep : INT := 0;
+	bPalletWaiting : BOOL;
 	startTrig : R_TRIG;
 	stopTrig : R_TRIG;
 	resumeTrig : R_TRIG;
@@ -38,6 +41,7 @@ VAR
 	home : Home;
 	iCounter :INT;
 	exitTimer : TON;
+	infoTimer : TON;
 	aFillVerticalPositions : ARRAY[1..54] OF INT := [
 		1, 10, 19, 28, 37, 46,
 		2, 11, 20, 29, 38, 47,
@@ -61,6 +65,10 @@ VAR
 		47, 38, 29, 20, 11, 2,
 		46, 37, 28, 19, 10, 1
 	];
+	storedOutputs : OUTPUTS;
+	haltedOutputs : OUTPUTS;
+	sStoredCurrentOp : STRING;
+	
 END_VAR
 
 VAR CONSTANT
@@ -73,27 +81,35 @@ stopTrig(CLK:=bStop);
 resumeTrig(CLK:=bResume);
 haltTrig(CLK:=bHalt);
 exitTimer(PT:=T#5S);
+infoTimer(PT:=T#5S);
 
 fill(
 	fioOutputs:=fioOutputs,
 	iPalletsInRack:=iPalletsInRack,
 	sCurrentOperation:=sCurrentOperation,
 	aSlots:=aSlots,
-	fioInputs:=fioInputs);
+	fioInputs:=fioInputs,
+	bHalt:=haltTrig.Q,
+	bResume:=resumeTrig.Q);	
 	
 empty(
 	fioOutputs:=fioOutputs,
 	iPalletsInRack:=iPalletsInRack,
 	sCurrentOperation:=sCurrentOperation,
 	aSlots:=aSlots,
-	fioInputs:=fioInputs);	
+	fioInputs:=fioInputs,
+	bHalt:=haltTrig.Q,
+	bResume:=resumeTrig.Q);		
 
 home(
 	fioOutputs:=fioOutputs,
 	iPalletsInRack:=iPalletsInRack,
 	sCurrentOperation:=sCurrentOperation,
 	aSlots:=aSlots,
-	fioInputs:=fioInputs);	
+	fioInputs:=fioInputs,
+	bPalletWaiting:=bPalletWaiting,
+	bHalt:=haltTrig.Q,
+	bResume:=resumeTrig.Q);	
 	
 IF startTrig.Q 
 	AND iStep = 0
@@ -101,7 +117,13 @@ IF startTrig.Q
 	resetInputs();
 	mAlgo := iAlgo;
 	mMode := iMode;
-	iStep := 10;
+	IF bFirstStart
+		THEN
+		bFirstStart := FALSE;
+		iStep := 3000;
+	ELSE
+		iStep := 10;
+	END_IF
 END_IF
 
 IF startTrig.Q 
@@ -113,15 +135,17 @@ IF startTrig.Q
 END_IF
 
 IF resumeTrig.Q 
-	AND iStep  = 1000
+	AND iStep  = 1050
 	THEN
 	resetInputs();
-	iStep := iHaltStep;	
+	iStep := 1100;
 END_IF
 
 IF haltTrig.Q
 	THEN
 	resetInputs();
+	sStoredCurrentOp := sCurrentOperation;
+	sCurrentOperation := 'Halted';
 	iHaltStep := iStep;
 	iStep := 1000;	
 END_IF
@@ -129,13 +153,15 @@ END_IF
 IF stopTrig.Q
 	THEN
 	resetInputs();
-	exitTimer.IN := FALSE;
+	sCurrentOperation := 'Stopped';
 	iStep :=  2000;
 END_IF
 
 CASE iStep OF
 	0:
 	 	sCurrentOperation := 'Idle';
+		infoTimer.IN := FALSE;
+		exitTimer.IN := FALSE;
 		resetInputs();
 
 	10: 
@@ -144,12 +170,19 @@ CASE iStep OF
 			AND NOT (mAlgo = 3 AND aSlots[iRackSlot]) 
 			THEN
 			iTotalPalletsProcessed := iTotalPalletsProcessed + 1;
-			// Emit Pallet
-			fioOutputs.bEmitPallet := TRUE;
-			// Start Entry Conveyors
-			fioOutputs.bEntryRollerConveyor := TRUE;
-			fioOutputs.bEntryLoadingConveyor := TRUE;
-			sCurrentOperation := 'Entry Conveyor started';
+			IF bPalletWaiting 
+				THEN
+				
+				sCurrentOperation := 'Pallet already waiting';
+			ELSE
+				// Emit Pallet		
+				fioOutputs.bEmitPallet := TRUE;
+				// Start Entry Conveyors
+				fioOutputs.bEntryRollerConveyor := TRUE;
+				fioOutputs.bEntryLoadingConveyor := TRUE;
+				sCurrentOperation := 'Entry Conveyor started';
+			END_IF
+
 			iStep := 20;
 		ELSIF mMode = 2
 			AND iPalletsInRack > 0 // empty
@@ -178,7 +211,14 @@ CASE iStep OF
 			iStep := 40;
 		ELSE
 			// Halt operations
-			iStep := 1000;
+			sCurrentOperation := 'No available space in rack';
+			infoTimer.IN := TRUE;
+			IF infoTimer.Q
+				THEN
+				infoTimer.IN := FALSE;
+				iStep:=0;
+			END_IF
+			
 		END_IF
 		
 	40: // Check algo for fill operation
@@ -218,6 +258,7 @@ CASE iStep OF
 	50:
 		fill.bStart := TRUE;
 		fill.iSlotPosition := iChosenSlot;
+		bPalletWaiting := FALSE;
 		IF fill.bDone THEN
 			fill.bStart := FALSE;
 			iStep := 0;
@@ -288,6 +329,21 @@ CASE iStep OF
 			iStep:=0;
 		END_IF
 		
+	1000:
+		storedOutputs := fioOutputs;
+		haltedOutputs.bSCLeft := fioOutputs.bSCLeft;
+		haltedOutputs.bSCRight := fioOutputs.bSCRight;
+		haltedOutputs.bSCLift := fioOutputs.bSCLift;
+		fioOutputs := haltedOutputs;
+		iStep:=1050;
+		
+	1050:;
+	
+	1100:
+		fioOutputs := storedOutputs;
+		sCurrentOperation := sStoredCurrentOp;
+		iStep := iHaltStep;	
+		
 	2000:
 		fioOutputs.iSCPosition := 0;
 		fill.bStart := FALSE;
@@ -296,13 +352,16 @@ CASE iStep OF
 		fioOutputs.bEntryRollerConveyor := FALSE;
 		fioOutputs.bExitLoadingConveyor := FALSE;
 		fioOutputs.bExitRollerConveyor := FALSE;
+		exitTimer.IN := FALSE;
+
 		resetInputs();	
 		
 	3000:
+	
 		home.bStart := TRUE;
 		IF home.bDone THEN
 			home.bStart := FALSE;
-			iStep := 0;
+			iStep := 10;
 		END_IF
 		
 END_CASE
@@ -324,25 +383,42 @@ bStop := FALSE;]]></ST>
       <LineId Id="797" Count="3" />
       <LineId Id="802" Count="0" />
       <LineId Id="1130" Count="0" />
+      <LineId Id="1375" Count="0" />
       <LineId Id="803" Count="0" />
       <LineId Id="1056" Count="1" />
       <LineId Id="1067" Count="0" />
-      <LineId Id="1058" Count="1" />
+      <LineId Id="1058" Count="0" />
+      <LineId Id="1407" Count="1" />
+      <LineId Id="1059" Count="0" />
       <LineId Id="1123" Count="0" />
       <LineId Id="1118" Count="4" />
+      <LineId Id="1405" Count="1" />
       <LineId Id="1061" Count="0" />
-      <LineId Id="1275" Count="5" />
+      <LineId Id="1275" Count="2" />
+      <LineId Id="1353" Count="0" />
+      <LineId Id="1279" Count="1" />
       <LineId Id="1124" Count="0" />
+      <LineId Id="1355" Count="0" />
+      <LineId Id="1403" Count="1" />
       <LineId Id="1281" Count="0" />
-      <LineId Id="804" Count="7" />
+      <LineId Id="804" Count="5" />
+      <LineId Id="1350" Count="0" />
+      <LineId Id="1414" Count="0" />
+      <LineId Id="1425" Count="0" />
+      <LineId Id="1416" Count="2" />
+      <LineId Id="1415" Count="0" />
+      <LineId Id="811" Count="0" />
       <LineId Id="1249" Count="4" />
       <LineId Id="1257" Count="0" />
       <LineId Id="1256" Count="0" />
       <LineId Id="1248" Count="0" />
-      <LineId Id="812" Count="17" />
-      <LineId Id="1129" Count="0" />
+      <LineId Id="812" Count="10" />
+      <LineId Id="1421" Count="1" />
+      <LineId Id="823" Count="6" />
+      <LineId Id="1423" Count="0" />
       <LineId Id="832" Count="4" />
       <LineId Id="1000" Count="0" />
+      <LineId Id="1376" Count="1" />
       <LineId Id="1147" Count="0" />
       <LineId Id="1001" Count="0" />
       <LineId Id="837" Count="1" />
@@ -350,12 +426,27 @@ bStop := FALSE;]]></ST>
       <LineId Id="1245" Count="0" />
       <LineId Id="839" Count="0" />
       <LineId Id="1046" Count="0" />
-      <LineId Id="840" Count="7" />
+      <LineId Id="1356" Count="0" />
+      <LineId Id="1359" Count="0" />
+      <LineId Id="1370" Count="0" />
+      <LineId Id="1361" Count="0" />
+      <LineId Id="1363" Count="0" />
+      <LineId Id="1365" Count="4" />
+      <LineId Id="1364" Count="0" />
+      <LineId Id="1360" Count="0" />
+      <LineId Id="845" Count="2" />
       <LineId Id="1145" Count="0" />
       <LineId Id="1246" Count="0" />
       <LineId Id="1047" Count="1" />
       <LineId Id="1080" Count="0" />
-      <LineId Id="848" Count="27" />
+      <LineId Id="848" Count="20" />
+      <LineId Id="1371" Count="1" />
+      <LineId Id="1378" Count="1" />
+      <LineId Id="1382" Count="0" />
+      <LineId Id="1381" Count="0" />
+      <LineId Id="1380" Count="0" />
+      <LineId Id="1383" Count="0" />
+      <LineId Id="870" Count="5" />
       <LineId Id="997" Count="0" />
       <LineId Id="876" Count="7" />
       <LineId Id="1174" Count="9" />
@@ -366,6 +457,7 @@ bStop := FALSE;]]></ST>
       <LineId Id="995" Count="0" />
       <LineId Id="1062" Count="0" />
       <LineId Id="1069" Count="0" />
+      <LineId Id="1384" Count="0" />
       <LineId Id="1063" Count="0" />
       <LineId Id="1073" Count="0" />
       <LineId Id="1064" Count="1" />
@@ -404,13 +496,27 @@ bStop := FALSE;]]></ST>
       <LineId Id="1141" Count="1" />
       <LineId Id="1144" Count="0" />
       <LineId Id="1140" Count="0" />
-      <LineId Id="1159" Count="1" />
+      <LineId Id="1391" Count="0" />
+      <LineId Id="1159" Count="0" />
+      <LineId Id="1389" Count="0" />
+      <LineId Id="1409" Count="2" />
+      <LineId Id="1385" Count="0" />
+      <LineId Id="1390" Count="0" />
+      <LineId Id="1396" Count="1" />
+      <LineId Id="1401" Count="0" />
+      <LineId Id="1399" Count="1" />
+      <LineId Id="1424" Count="0" />
+      <LineId Id="1398" Count="0" />
+      <LineId Id="1402" Count="0" />
+      <LineId Id="1160" Count="0" />
       <LineId Id="1266" Count="2" />
       <LineId Id="1271" Count="1" />
       <LineId Id="1269" Count="1" />
+      <LineId Id="1347" Count="1" />
       <LineId Id="1247" Count="0" />
       <LineId Id="1265" Count="0" />
       <LineId Id="1258" Count="0" />
+      <LineId Id="1351" Count="0" />
       <LineId Id="1260" Count="0" />
       <LineId Id="1262" Count="2" />
       <LineId Id="1259" Count="0" />
